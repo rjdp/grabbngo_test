@@ -13,6 +13,9 @@ class StoreCategory(BaseTable):
     key = models.CharField(max_length=75)
     uuid = models.CharField(max_length=75)
 
+    def __str__(self):
+        return self.name
+
 class Store(BaseTable):
     INR = 'INR'
     USD = 'USD'
@@ -32,6 +35,9 @@ class Store(BaseTable):
         default=INR,
     )
 
+    def __str__(self):
+        return self.title
+
 class Item(BaseTable):
     title = models.CharField(max_length=75)
     image_url = models.URLField(max_length=300, blank=True)
@@ -39,4 +45,7 @@ class Item(BaseTable):
     uuid = models.CharField(max_length=75)
     price =  models.DecimalField(max_digits=8, decimal_places=2)
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.title
     

@@ -15,9 +15,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from api.views import StoreApiVew
+from api.views import StoreApiVew, store_xlsx_view
 
 urlpatterns = [
     path('stores', StoreApiVew.as_view()),
     path('stores/<uuid>/', StoreApiVew.as_view()),
+    path('stores-xlsx/<uuid>/', store_xlsx_view),
 ]

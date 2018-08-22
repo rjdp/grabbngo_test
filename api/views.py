@@ -1,10 +1,18 @@
 import requests
+import sys
+from datetime import datetime
+from io import BytesIO
+import xlsxwriter
+from django.http import StreamingHttpResponse
 from rest_framework import mixins
 from rest_framework import generics
 from django.http import Http404
 from .models import Store
-from .serializers import StoreSerializer
+from .serializers import StoreSerializer, StoreCsvSerializer, ItemCsvSerializer, StoreCategorySerializer
 from .utils import create_store_from_json
+from rest_framework.decorators import api_view
+from django.shortcuts import get_object_or_404
+from django.db.models.query import QuerySet
 
 BASE_STORE_URL = 'https://www.ubereats.com/rtapi/eats/v2/eater-store/'
 
@@ -44,3 +52,59 @@ class StoreApiVew(mixins.ListModelMixin,
         if self.lookup_field in kwargs:
             return self.retrieve(request, *args, **kwargs)
         return self.list(request, *args, **kwargs)
+
+
+
+@api_view(['GET'])
+def store_xlsx_view(request, uuid=None):
+    if uuid:
+        store = get_object_or_404(Store.objects.prefetch_related('item_set', 'categories'), uuid=uuid)
+        
+        output = BytesIO()
+        xldoc = xlsxwriter.Workbook(output)
+        worksheet_store = xldoc.add_worksheet('Store')
+        worksheet_menu = xldoc.add_worksheet('Menu')
+        worksheet_store_categories = xldoc.add_worksheet('Store Categories')
+
+
+        store_header = {'uuid': 'UUID', 'title':'TITLE', 'categories':'CATEGORIES',
+                'menu_items':'MENU ITEMS', 'hero_image_url':'HERO IMAGE URL', 'location':'LOCATION',
+                'city':'CITY', 'currency':'CURRENCY'}
+
+        menu_header = {'uuid':'UUID', 'title':'TITLE', 'description':'DESCRIPTION', 'image_url': 'IMAGE URL',
+         'price': 'PRICE', 'store': 'STORE'}
+
+        categories_header = {'uuid': 'UUID', 'name':'TITLE'}
+
+        headers = [store_header, menu_header, categories_header]
+
+        worksheets = [worksheet_store, worksheet_menu, worksheet_store_categories]
+
+        serializers = [StoreCsvSerializer, ItemCsvSerializer, StoreCategorySerializer]
+
+        obj_or_qsets = [store, store.item_set.all(), store.categories.all()]
+
+        for header, worksheet, serializer, obj_or_qs in zip(headers, worksheets, serializers, obj_or_qsets):
+            for i, col_name in enumerate(header.values()):
+                worksheet.write(0, i, col_name)
+
+            kwargs = {}
+
+            if isinstance(obj_or_qs, QuerySet):
+                kwargs['many'] = True
+
+            data = serializer(obj_or_qs, **kwargs).data
+
+            if kwargs.get('many'):
+                for i, row_dict in enumerate(data):
+                    for j, key in enumerate(header.keys()):
+                        worksheet.write(i+1, j, row_dict.get(key, ''))
+            else:
+                for i, key in enumerate(header.keys()):
+                    worksheet.write(1, i, data.get(key, ''))
+
+        xldoc.close()
+        response = StreamingHttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=%s-%s.xlsx' % (store.title, datetime.now(
+        ).strftime('%Y/%m/%d-%H:%M:%S.%f'))
+        return response
