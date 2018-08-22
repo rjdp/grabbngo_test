@@ -16,5 +16,12 @@
 - [x] Dockerized the app.
 
 
+### How to run ?
+
+1) from root of project dir. run `docker-compose up db` (required only once to intiatlize db with some data to start with and avoid migration).
+
+2) `docker-compose up` to run the app, visit ```http://localhost:8000/stores``` 
+
+
 ###### Thanks 😊
  
