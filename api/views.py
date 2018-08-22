@@ -13,6 +13,7 @@ from .utils import create_store_from_json
 from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
 from django.db.models.query import QuerySet
+from django.http import HttpResponse
 
 BASE_STORE_URL = 'https://www.ubereats.com/rtapi/eats/v2/eater-store/'
 
@@ -104,7 +105,7 @@ def store_xlsx_view(request, uuid=None):
                     worksheet.write(1, i, data.get(key, ''))
 
         xldoc.close()
-        response = StreamingHttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=%s-%s.xlsx' % (store.title, datetime.now(
         ).strftime('%Y/%m/%d-%H:%M:%S.%f'))
         return response
